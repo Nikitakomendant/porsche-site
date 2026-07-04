@@ -11,6 +11,49 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 gsap.registerPlugin(ScrollTrigger);
 
 /* ===================================================================
+   THEME — light / dark toggle, persisted, drives both CSS vars and
+   the three.js scene (background / fog / lights need real JS updates,
+   CSS variables alone only reach DOM elements).
+=================================================================== */
+const THEME_KEY = 'porsche-site-theme';
+const root = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+
+function getStoredTheme() {
+  try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+}
+function setStoredTheme(v) {
+  try { localStorage.setItem(THEME_KEY, v); } catch (e) { /* ignore */ }
+}
+
+let currentTheme = getStoredTheme() || 'dark';
+root.setAttribute('data-theme', currentTheme);
+if (themeToggle) themeToggle.setAttribute('aria-pressed', String(currentTheme === 'light'));
+
+const THEME_SCENE = {
+  dark: {
+    bg: 0x0a0a0b,
+    fogNear: 8, fogFar: 26,
+    hemiSky: 0xbfd4ff, hemiGround: 0x0a0a0b, hemiIntensity: 0.55,
+    keyIntensity: 2.4,
+    rimColor: 0xffb37a, rimIntensity: 0.6,
+    fillColor: 0x8fa8ff, fillIntensity: 0.5,
+    shadowOpacity: 0.55,
+    exposure: 1.05,
+  },
+  light: {
+    bg: 0xf4f1ea,
+    fogNear: 10, fogFar: 30,
+    hemiSky: 0xffffff, hemiGround: 0xd8d3c6, hemiIntensity: 0.9,
+    keyIntensity: 2.7,
+    rimColor: 0xffcfa3, rimIntensity: 0.4,
+    fillColor: 0xaebedd, fillIntensity: 0.35,
+    shadowOpacity: 0.25,
+    exposure: 1.15,
+  },
+};
+
+/* ===================================================================
    1. RENDERER / SCENE / CAMERA
 =================================================================== */
 const canvas = document.getElementById('gl');
@@ -19,20 +62,18 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0b);
-scene.fog = new THREE.Fog(0x0a0a0b, 8, 26);
 
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 1.6, 6);
 
 // Studio-style environment lighting (procedural, no external HDRI needed)
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = envTex;
 
 const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x0a0a0b, 0.55);
 scene.add(hemi);
@@ -48,7 +89,9 @@ key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
 key.shadow.bias = -0.0006;
 scene.add(key);
 
-const rim = new THREE.DirectionalLight(0xff3b4d, 1.1);
+// Warm accent rim instead of a strong saturated color, so it lifts the
+// silhouette without tinting the paint's actual (beige) color.
+const rim = new THREE.DirectionalLight(0xffb37a, 0.6);
 rim.position.set(-6, 3, -5);
 scene.add(rim);
 
@@ -64,82 +107,51 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
+function applySceneTheme(name) {
+  const t = THEME_SCENE[name] || THEME_SCENE.dark;
+  scene.background = new THREE.Color(t.bg);
+  scene.fog = new THREE.Fog(t.bg, t.fogNear, t.fogFar);
+  hemi.color.setHex(t.hemiSky);
+  hemi.groundColor.setHex(t.hemiGround);
+  hemi.intensity = t.hemiIntensity;
+  key.intensity = t.keyIntensity;
+  rim.color.setHex(t.rimColor);
+  rim.intensity = t.rimIntensity;
+  fill.color.setHex(t.fillColor);
+  fill.intensity = t.fillIntensity;
+  groundMat.opacity = t.shadowOpacity;
+  renderer.toneMappingExposure = t.exposure;
+}
+applySceneTheme(currentTheme);
+
+function setTheme(name) {
+  currentTheme = name;
+  root.setAttribute('data-theme', name);
+  setStoredTheme(name);
+  applySceneTheme(name);
+  if (themeToggle) themeToggle.setAttribute('aria-pressed', String(name === 'light'));
+}
+
+themeToggle?.addEventListener('click', () => {
+  setTheme(currentTheme === 'light' ? 'dark' : 'light');
+});
+
+// Respect system preference on first-ever visit (no stored choice yet)
+if (!getStoredTheme() && window.matchMedia('(prefers-color-scheme: light)').matches) {
+  setTheme('light');
+}
+
 /* ===================================================================
-   2. TEXTURE ENGINE — smart keyword-based material assignment
-   The source pack ships raw meshes + a loose folder of texture maps
-   (no baked-in linking), so materials are matched to textures here by
-   name. Edit BUCKETS below to fine-tune a specific part if needed —
-   open devtools console to see the real material names logged.
+   2. MATERIALS
+   This model was exported with real per-material PBR textures already
+   baked in (baseColor / normal / metallic-roughness / occlusion /
+   emissive) from the source USD scene, so GLTFLoader builds correct
+   THREE.MeshStandardMaterial instances on its own — no keyword-guessing
+   needed. We only patch two small things after load: aoMap needs a
+   UV2 channel in three.js, and a couple of helper/collision meshes
+   should stay hidden.
 =================================================================== */
-const TEX_PATH = 'assets/textures/';
-const texLoader = new THREE.TextureLoader();
-const texCache = {};
-function tex(file, { srgb = false } = {}) {
-  if (!file) return null;
-  if (!texCache[file]) {
-    const t = texLoader.load(TEX_PATH + file);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-    texCache[file] = t;
-  }
-  return texCache[file];
-}
-
-// order matters: first matching test wins. `all`: every keyword must be present.
-const BUCKETS = [
-  { all: ['perfo'],                color: 'leather_Color.jpeg', ao: 'AO_leather_perforated_1024.jpeg', rough: 'Leather_perfo_roughness.jpeg', normal: 'Leather_perfo_normal.jpeg', roughness: 0.65, metalness: 0.0 },
-  { all: ['leather'],              color: 'leather_Color.jpeg', ao: 'AO_leather_int_1024.jpeg', rough: 'leather_roughness.jpeg', normal: 'leather_normal.jpeg', roughness: 0.6, metalness: 0.0 },
-  { all: ['uphol'],                color: 'upholstery_color.jpeg', ao: 'AO_upholstery_1024.jpeg', normal: 'upholstery_NM.jpeg', roughness: 0.85, metalness: 0.0 },
-  { all: ['rug'],                  color: 'rug_color.jpeg', ao: 'AO_rug_interior_1024.jpeg', normal: 'rug_NM.jpeg', roughness: 0.95, metalness: 0.0 },
-  { all: ['belt'],                 ao: 'AO_belts_1024.jpeg', normal: 'belts_normal.jpeg', rough: 'belts_roughness.jpeg', color: 0x1a1a1a, roughness: 0.7, metalness: 0.0 },
-  { all: ['tire'],                 ao: 'AO_tires_1024.jpeg', normal: 'tire_NM_all.jpeg', color: 0x121212, roughness: 0.95, metalness: 0.0 },
-  { all: ['disc'],                 color: 'Discs_color.jpeg', rough: 'Discs_rough.jpeg', roughness: 0.5, metalness: 0.9 },
-  { all: ['brake'],                ao: 'AO_brakes_1024.jpeg', color: 0xb43038, roughness: 0.45, metalness: 0.6 },
-  { all: ['rim', 'chrom'],         ao: 'AO_rim_chrome_1024.jpeg', color: 0xe9e9ea, roughness: 0.12, metalness: 1.0 },
-  { all: ['rim'],                  ao: 'AO_rim_black_1024.jpeg', color: 0x111214, roughness: 0.3, metalness: 0.9 },
-  { all: ['pipe'],                 ao: 'AO_pipes_chrom_1024.jpeg', color: 0xdfdfe1, roughness: 0.12, metalness: 1.0 },
-  { all: ['chrom'],                ao: 'AO_pipes_chrom_1024.jpeg', color: 0xdfdfe1, roughness: 0.1, metalness: 1.0 },
-  { all: ['carbon'],               color: 'Carbon_color.jpeg', rough: 'Carbon_roughness.jpeg', roughness: 0.4, metalness: 0.3 },
-  { all: ['logo'],                 ao: 'AO_LOGO1_1024.jpeg', normal: 'logo_NM.jpeg', color: 0xd7d7d9, roughness: 0.25, metalness: 0.95 },
-  { all: ['plate'],                color: 'number_plate_logo.jpeg', roughness: 0.5, metalness: 0.1 },
-  { all: ['reflect'],              color: 'reflectors_color.jpeg', normal: 'reflectors_NM.jpeg', roughness: 0.2, metalness: 0.4, emissive: 0x552200, emissiveIntensity: 0.25 },
-  { all: ['headlight'],            normal: 'headlights_pattern_NM.jpeg', color: 0xf5f5f5, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.9, emissive: 0xffffff, emissiveIntensity: 0.08 },
-  { all: ['light'],                color: 'emission_all_lights.jpeg', emissive: 0xffffff, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.0 },
-  { all: ['glass'],                color: 0x0b0d10, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.35 },
-  { all: ['window'],               color: 0x0b0d10, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.35 },
-  { all: ['plast'],                ao: 'AO_bl_pl_M_ext_1024.jpeg', color: 0x0d0d0e, roughness: 0.55, metalness: 0.05 },
-  { all: ['invis'],                color: 0x0a0a0a, roughness: 0.8, metalness: 0.0, visible: false },
-  { all: ['ground'],               color: 'internal_ground_ao_texture.jpeg', roughness: 1.0, metalness: 0.0 },
-  { all: ['body'],                 ao: 'AO_body_main_1024.jpeg', color: 0x3d4046, roughness: 0.3, metalness: 0.85, clearcoat: 1.0, clearcoatRoughness: 0.04 },
-];
-const DEFAULT_BUCKET = { color: 0x2c2e32, roughness: 0.5, metalness: 0.4 };
-
-function resolveBucket(name) {
-  const n = (name || '').toLowerCase();
-  return BUCKETS.find(b => b.all.every(k => n.includes(k))) || DEFAULT_BUCKET;
-}
-
-function buildMaterial(sourceMat, meshName) {
-  const b = resolveBucket((sourceMat && sourceMat.name) || meshName);
-  const params = {
-    roughness: b.roughness ?? 0.5,
-    metalness: b.metalness ?? 0.3,
-    clearcoat: b.clearcoat ?? 0,
-    clearcoatRoughness: b.clearcoatRoughness ?? 0,
-    transparent: !!b.transparent,
-    opacity: b.opacity ?? 1,
-  };
-  if (typeof b.color === 'string') params.map = tex(b.color, { srgb: true });
-  else if (typeof b.color === 'number') params.color = new THREE.Color(b.color);
-  if (b.ao) params.aoMap = tex(b.ao);
-  if (b.rough) params.roughnessMap = tex(b.rough);
-  if (b.normal) params.normalMap = tex(b.normal);
-  if (b.emissive) { params.emissive = new THREE.Color(b.emissive); params.emissiveIntensity = b.emissiveIntensity ?? 1; }
-
-  const mat = new THREE.MeshPhysicalMaterial(params);
-  mat.visible = b.visible !== false;
-  return mat;
-}
+const HIDDEN_MATERIALS = new Set(['invisible_all']);
 
 /* ===================================================================
    3. LOAD MODEL
@@ -180,7 +192,7 @@ const stallTimer = setTimeout(() => {
 
 const manager = new THREE.LoadingManager();
 manager.onProgress = (url, loaded, total) => {
-  const pct = Math.min(100, Math.round((loaded / total) * 100));
+  const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
   loaderBar.style.width = pct + '%';
   loaderPct.textContent = pct;
 };
@@ -197,8 +209,8 @@ gltfLoader.load(
   (gltf) => {
     carRoot = gltf.scene;
 
-    // Normalize materials + shadows, log names for easy fine-tuning
-    const seen = new Set();
+    // Shadows + small per-material fixups (materials themselves are
+    // already correct, baked into the GLB from the source USD scene)
     carRoot.traverse((child) => {
       if (!child.isMesh) return;
       child.castShadow = true;
@@ -209,18 +221,15 @@ gltfLoader.load(
         child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
       }
 
-      const srcMats = Array.isArray(child.material) ? child.material : [child.material];
-      const newMats = srcMats.map((m) => {
-        if (m && !seen.has(m.name)) { seen.add(m.name); console.log('[material]', m.name || '(unnamed)'); }
-        return buildMaterial(m, child.name);
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      mats.forEach((m) => {
+        if (m && HIDDEN_MATERIALS.has(m.name)) child.visible = false;
       });
-      child.material = Array.isArray(child.material) ? newMats : newMats[0];
     });
 
     // Auto-fit: center model, sit on ground, scale to a friendly size
     const box = new THREE.Box3().setFromObject(carRoot);
     const size = new THREE.Vector3(); box.getSize(size);
-    const center = new THREE.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const scale = 4.2 / maxDim; // target ~4.2 world units long
     carRoot.scale.setScalar(scale);
@@ -235,7 +244,7 @@ gltfLoader.load(
     modelRadius = size2.length() * 0.5;
     scene.add(carRoot);
 
-    KF = keyframes(modelRadius);
+    buildCameraPath(modelRadius);
     applyCamera(scrollProgress);
 
     finishLoading();
@@ -259,40 +268,55 @@ function finishLoading() {
 }
 
 /* ===================================================================
-   4. CAMERA KEYFRAMES — 4 chapters, interpolated by scroll progress
-   Positions expressed as multiples of modelRadius so it adapts to
-   whatever scale the source FBX actually ships at.
+   4. CAMERA PATH — smooth Catmull-Rom spline through 4 chapter shots,
+   instead of a piecewise-linear lerp. Linear interpolation between
+   keyframes has a sharp velocity change at every waypoint, which reads
+   as a "jump" mid-scroll; a spline keeps the camera moving on one
+   continuous, easing curve for the whole scroll range.
 =================================================================== */
 function keyframes(r) {
   return [
-    { pos: [0.15 * r, 0.55 * r, 2.1 * r], look: [0, 0.55 * r, 0] },   // 0 badge / front
-    { pos: [2.4 * r, 0.5 * r, 0.9 * r],  look: [0, 0.45 * r, 0] },    // 1 side profile
+    { pos: [0.15 * r, 0.55 * r, 2.1 * r], look: [0, 0.55 * r, 0] },          // 0 badge / front
+    { pos: [2.4 * r, 0.5 * r, 0.9 * r], look: [0, 0.45 * r, 0] },           // 1 side profile
     { pos: [1.1 * r, 0.25 * r, -1.6 * r], look: [0.6 * r, 0.2 * r, -0.4 * r] }, // 2 rear wheel detail
-    { pos: [-0.05 * r, 0.9 * r, 0.05 * r], look: [0, 0.65 * r, -0.3 * r] },     // 3 interior-ish top-down
+    { pos: [-0.05 * r, 0.9 * r, 0.05 * r], look: [0, 0.65 * r, -0.3 * r] },  // 3 interior-ish top-down
   ];
 }
 
-let KF = keyframes(modelRadius);
+let posCurve = null;
+let lookCurve = null;
+
+function buildCameraPath(r) {
+  const kf = keyframes(r);
+  const posPoints = kf.map(k => new THREE.Vector3(...k.pos));
+  const lookPoints = kf.map(k => new THREE.Vector3(...k.look));
+  // Duplicate first/last points so the curve doesn't overshoot at the ends
+  // (chordal Catmull-Rom + edge padding keeps easing gentle at the very
+  // start/end of the scroll range instead of overshooting off-path).
+  posCurve = new THREE.CatmullRomCurve3(
+    [posPoints[0], ...posPoints, posPoints[posPoints.length - 1]],
+    false, 'catmullrom', 0.5
+  );
+  lookCurve = new THREE.CatmullRomCurve3(
+    [lookPoints[0], ...lookPoints, lookPoints[lookPoints.length - 1]],
+    false, 'catmullrom', 0.5
+  );
+}
+buildCameraPath(modelRadius);
+
 const tmpPos = new THREE.Vector3();
 const tmpLook = new THREE.Vector3();
 let scrollProgress = 0; // 0..1 across the whole pinned hero
 
 function applyCamera(progress) {
-  const segs = KF.length - 1;
-  const scaled = Math.min(progress, 0.9999) * segs;
-  const i = Math.floor(scaled);
-  const t = scaled - i;
-  const a = KF[i], b = KF[Math.min(i + 1, segs)];
-  tmpPos.set(
-    THREE.MathUtils.lerp(a.pos[0], b.pos[0], t),
-    THREE.MathUtils.lerp(a.pos[1], b.pos[1], t),
-    THREE.MathUtils.lerp(a.pos[2], b.pos[2], t)
-  );
-  tmpLook.set(
-    THREE.MathUtils.lerp(a.look[0], b.look[0], t),
-    THREE.MathUtils.lerp(a.look[1], b.look[1], t),
-    THREE.MathUtils.lerp(a.look[2], b.look[2], t)
-  );
+  // Map 0..1 progress into the padded curve's 0..1 parameter range
+  // (curve has 1 extra padding point on each end).
+  const tMin = 1 / 6;
+  const tMax = 1 - tMin;
+  const t = THREE.MathUtils.lerp(tMin, tMax, Math.min(progress, 1));
+
+  posCurve.getPointAt(t, tmpPos);
+  lookCurve.getPointAt(t, tmpLook);
   camera.position.copy(tmpPos);
   camera.lookAt(tmpLook);
 }

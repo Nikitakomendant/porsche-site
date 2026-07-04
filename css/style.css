@@ -21,6 +21,17 @@
 
 *,*::before,*::after{ box-sizing:border-box; }
 html{ scroll-behavior:smooth; background:var(--void); }
+html[data-theme="light"]{
+  --void:      #f4f1ea;
+  --graphite:  #ebe7dd;
+  --panel:     #e2ddd0;
+  --line:      #d3ccba;
+  --titanium:  #6b6558;
+  --ivory:     #1c1a16;
+  --red:       #b8001a;
+  --red-dim:   #7a0511;
+}
+html[data-theme="light"] .nav__burger span{ background:var(--ivory); }
 body{
   margin:0;
   background:var(--void);
@@ -87,6 +98,15 @@ a{ color:inherit; text-decoration:none; }
   font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.03em;
   border:1px solid currentColor; padding:8px 16px; border-radius:999px;
 }
+.theme-toggle{
+  display:flex; align-items:center; justify-content:center;
+  width:38px; height:38px; border-radius:999px;
+  border:1px solid currentColor; background:none; color:inherit; cursor:pointer;
+  margin-left:4px; flex-shrink:0;
+}
+.theme-toggle__moon{ display:none; }
+html[data-theme="light"] .theme-toggle__sun{ display:none; }
+html[data-theme="light"] .theme-toggle__moon{ display:block; }
 .nav__burger{ display:none; }
 
 .nav__mobile{
@@ -259,6 +279,25 @@ a{ color:inherit; text-decoration:none; }
 @media (max-width: 600px){
   .timeline li{ grid-template-columns:50px 1fr; gap:16px; }
 }
+
+/* ===== FAQ ===== */
+.faq__list{ max-width:760px; }
+.faq__item{
+  border-bottom:1px solid var(--line);
+  padding:22px 0;
+}
+.faq__item summary{
+  cursor:pointer; list-style:none; font-family:var(--f-display);
+  font-size:18px; font-weight:600; display:flex; align-items:center;
+  justify-content:space-between; gap:16px;
+}
+.faq__item summary::-webkit-details-marker{ display:none; }
+.faq__item summary::after{
+  content:'+'; font-size:22px; font-weight:400; color:var(--red);
+  flex-shrink:0; transition:transform .25s ease;
+}
+.faq__item[open] summary::after{ transform:rotate(45deg); }
+.faq__item p{ color:var(--titanium); margin-top:14px; max-width:640px; }
 
 /* ===== Contact ===== */
 .contact__wrap{ text-align:center; display:flex; flex-direction:column; align-items:center; }
