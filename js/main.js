@@ -10,6 +10,18 @@ const isMobile = window.matchMedia('(max-width: 780px)').matches;
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 gsap.registerPlugin(ScrollTrigger);
 
+// Mobile browsers resize the visible viewport as the address bar shows/hides
+// during scroll, which used to make ScrollTrigger recalculate mid-scroll and
+// jump. normalizeScroll fixes this by scrolling a proxy element instead of
+// relying on the browser's own (unstable-height) scroll container, and
+// ignoreMobileResize skips the spurious resize events address-bar show/hide
+// fires. Together these are the standard fix for janky pinned sections on
+// mobile Safari/Chrome.
+ScrollTrigger.config({ ignoreMobileResize: true });
+if (!prefersReduced) {
+  ScrollTrigger.normalizeScroll(true);
+}
+
 /* ===================================================================
    THEME — light / dark toggle, persisted, drives both CSS vars and
    the three.js scene (background / fog / lights need real JS updates,
@@ -370,12 +382,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-
-  if (carRoot) {
-    // subtle idle rotation, always on, adds life to the reveal
-    carRoot.rotation.y += dt * 0.05;
-  }
+  clock.getDelta(); // keep the clock ticking in case it's needed later
 
   renderer.render(scene, camera);
 }
