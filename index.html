@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Євгенія Полозенко — Ваш провідник у світ Porsche | Одеса</title>
+<meta name="description" content="Офіційний амбассадор бренду Porsche в Україні. Індивідуальний підбір, супровід та незабутня видача авто в Одесі.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== Loader ===== -->
+<div class="loader" id="loader">
+  <div class="loader__mark">911</div>
+  <div class="loader__track"><div class="loader__bar" id="loaderBar"></div></div>
+  <div class="loader__label"><span id="loaderPct">0</span>% — завантаження моделі</div>
+</div>
+
+<!-- ===== Nav ===== -->
+<header class="nav" id="nav">
+  <a href="#top" class="nav__logo">EVGENIA<span>.</span>PORSCHE</a>
+  <nav class="nav__links">
+    <a href="#about">Про мене</a>
+    <a href="#services">Послуги</a>
+    <a href="#process">Процес</a>
+    <a href="#contact">Контакти</a>
+  </nav>
+  <a class="nav__ig" href="https://www.instagram.com/pologen4ik" target="_blank" rel="noopener">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/></svg>
+    Instagram
+  </a>
+  <button class="nav__burger" id="burger" aria-label="Меню"><span></span><span></span><span></span></button>
+</header>
+<div class="nav__mobile" id="navMobile">
+  <a href="#about">Про мене</a>
+  <a href="#services">Послуги</a>
+  <a href="#process">Процес</a>
+  <a href="#contact">Контакти</a>
+  <a href="https://www.instagram.com/pologen4ik" target="_blank" rel="noopener">Instagram →</a>
+</div>
+
+<!-- ===== Hero / Scroll-scrubbed 3D ===== -->
+<section class="hero" id="top">
+  <canvas id="gl"></canvas>
+
+  <div class="hero__vignette"></div>
+
+  <div class="hero__eyebrow">PORSCHE · ОДЕСА</div>
+
+  <div class="chapters">
+    <div class="chapter" data-chapter="0">
+      <span class="chapter__num">01</span>
+      <h1 class="chapter__title">Ваш<br>провідник<br>у світ Porsche</h1>
+      <p class="chapter__text">Євгенія Полозенко — офіційний амбассадор бренду в Україні. Продаю авто з любов'ю.</p>
+    </div>
+    <div class="chapter" data-chapter="1">
+      <span class="chapter__num">02</span>
+      <h1 class="chapter__title">Кожна лінія —<br>рішення</h1>
+      <p class="chapter__text">Силует, який не переплутати. Ми підбираємо не машину — ми підбираємо характер.</p>
+    </div>
+    <div class="chapter" data-chapter="2">
+      <span class="chapter__num">03</span>
+      <h1 class="chapter__title">Деталі,<br>які відчуваються</h1>
+      <p class="chapter__text">Від диску колеса до прошивки салону — важлива кожна дрібниця.</p>
+    </div>
+    <div class="chapter" data-chapter="3">
+      <span class="chapter__num">04</span>
+      <h1 class="chapter__title">Простір,<br>створений<br>для вас</h1>
+      <p class="chapter__text">Індивідуальна конфігурація салону під ваш стиль життя.</p>
+    </div>
+  </div>
+
+  <div class="hero__scroll" id="scrollHint">
+    <span>Гортайте</span>
+    <div class="hero__scroll-line"><i></i></div>
+  </div>
+</section>
+
+<!-- ===== About ===== -->
+<section class="section about" id="about">
+  <div class="wrap about__grid">
+    <div class="about__label">
+      <span class="eyebrow">Про мене</span>
+      <div class="badge">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M12 2 L21 6.5 V12 C21 17 17 20.5 12 22 C7 20.5 3 17 3 12 V6.5 Z" stroke="currentColor" stroke-width="1.4"/><path d="M8.5 12.5 L11 15 L16 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Ambassador Brand Porsche
+      </div>
+    </div>
+    <div class="about__body">
+      <h2>Євгенія Полозенко</h2>
+      <p class="lead">TOP-менеджер з продажу Porsche в Україні. Базуюсь в Одесі, працюю з клієнтами по всій країні.</p>
+      <p>Я не просто оформлюю угоду — я супроводжую вас від першої розмови до моменту, коли ви сідаєте за кермо свого Porsche. Індивідуальний підбір конфігурації, чесна консультація без зайвого тиску та видача, яку ви запам'ятаєте надовго.</p>
+      <div class="stats">
+        <div class="stat"><span class="stat__num">600+</span><span class="stat__label">публікацій про авто та клієнтів</span></div>
+        <div class="stat"><span class="stat__num">100%</span><span class="stat__label">індивідуальний підхід</span></div>
+        <div class="stat"><span class="stat__num">Odesa</span><span class="stat__label">base &amp; вся Україна</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Services ===== -->
+<section class="section services" id="services">
+  <div class="wrap">
+    <span class="eyebrow">Послуги</span>
+    <h2 class="section__title">Від запиту до ключів у руці</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card__icon">◐</div>
+        <h3>Підбір авто</h3>
+        <p>Аналізую ваші задачі та стиль життя, підбираю модель, комплектацію та колір, які підійдуть саме вам.</p>
+      </div>
+      <div class="card">
+        <div class="card__icon">◑</div>
+        <h3>Конфігурація</h3>
+        <p>Допомагаю зібрати індивідуальну специфікацію: екстер'єр, салон, пакети опцій — без переплат за зайве.</p>
+      </div>
+      <div class="card">
+        <div class="card__icon">◒</div>
+        <h3>Супровід угоди</h3>
+        <p>Документи, логістика, розмитнення та реєстрація — беру організаційну частину на себе.</p>
+      </div>
+      <div class="card">
+        <div class="card__icon">◓</div>
+        <h3>Видача авто</h3>
+        <p>Створюю церемонію видачі, яка залишається в пам'яті — фото, емоції, перше враження від вашого Porsche.</p>
+      </div>
+      <div class="card">
+        <div class="card__icon">◔</div>
+        <h3>Після покупки</h3>
+        <p>Залишаюсь на зв'язку: сервіс, аксесуари, наступний апгрейд — я поруч на всіх етапах володіння.</p>
+      </div>
+      <div class="card">
+        <div class="card__icon">◕</div>
+        <h3>Trade-in</h3>
+        <p>Допомагаю вигідно обміняти поточний автомобіль на новий Porsche вашої мрії.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Process ===== -->
+<section class="section process" id="process">
+  <div class="wrap">
+    <span class="eyebrow">Процес</span>
+    <h2 class="section__title">Як ми працюємо</h2>
+    <ol class="timeline">
+      <li><span class="timeline__index">01</span><div><h3>Консультація</h3><p>Знайомимось, обговорюємо бюджет, задачі та бажану модель.</p></div></li>
+      <li><span class="timeline__index">02</span><div><h3>Підбір і конфігурація</h3><p>Формуємо оптимальну специфікацію авто під ваш запит.</p></div></li>
+      <li><span class="timeline__index">03</span><div><h3>Оформлення</h3><p>Супроводжую угоду, документи та логістику від початку до кінця.</p></div></li>
+      <li><span class="timeline__index">04</span><div><h3>Видача</h3><p>Особиста церемонія передачі ключів — саме той момент, заради якого все починалось.</p></div></li>
+      <li><span class="timeline__index">05</span><div><h3>Супровід</h3><p>Залишаюсь на зв'язку після покупки: сервіс, питання, наступні кроки.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== Contact ===== -->
+<section class="section contact" id="contact">
+  <div class="wrap contact__wrap">
+    <span class="eyebrow">Контакти</span>
+    <h2 class="section__title">Готові обрати свій Porsche?</h2>
+    <p class="contact__text">Напишіть у Instagram — відповідаю особисто та швидко.</p>
+    <div class="contact__actions">
+      <a class="btn btn--primary" href="https://www.instagram.com/pologen4ik" target="_blank" rel="noopener">Написати в Instagram</a>
+      <a class="btn btn--ghost" href="#top">Нагору ↑</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer__wrap">
+    <span>© <span id="year"></span> Євгенія Полозенко · Porsche Ambassador</span>
+    <a href="https://www.instagram.com/pologen4ik" target="_blank" rel="noopener">@pologen4ik</a>
+  </div>
+</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
