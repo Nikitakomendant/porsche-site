@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /* ===================================================================
@@ -147,6 +148,36 @@ const loaderEl = document.getElementById('loader');
 const loaderBar = document.getElementById('loaderBar');
 const loaderPct = document.getElementById('loaderPct');
 
+function showLoaderTrouble(message) {
+  loaderBar.style.width = '0%';
+  loaderBar.style.background = '#ff3b4d';
+  loaderPct.parentElement.innerHTML = message;
+}
+
+// Opening index.html by double-click (file://) blocks the model from loading
+// in every browser — catch this immediately with a clear explanation instead
+// of leaving the loader stuck at 0%.
+if (location.protocol === 'file:') {
+  showLoaderTrouble(
+    'Сайт відкрито напряму з файлів — браузер блокує завантаження 3D-моделі в цьому режимі.<br><br>' +
+    'Найпростіше: перетягніть цю папку на <a href="https://app.netlify.com/drop" target="_blank" rel="noopener" style="color:#ff5c6e;text-decoration:underline;">app.netlify.com/drop</a> — отримаєте робоче посилання за секунди.<br><br>' +
+    'Або локально: <code>npx serve .</code> у терміналі в цій папці, потім відкрити адресу, яку він покаже.'
+  );
+}
+
+// Safety net: if nothing has finished loading after a while, something is
+// stuck (wrong path, blocked request, slow connection) — say so on screen.
+const stallTimer = setTimeout(() => {
+  if (!loaderEl.classList.contains('is-hidden') && location.protocol !== 'file:') {
+    showLoaderTrouble(
+      'Завантаження триває занадто довго.<br><br>' +
+      'Перевірте, що сайт відкрито через сервер (не подвійним кліком по файлу), ' +
+      'що папка <code>assets/models/</code> зі сцени не була випадково пропущена при заливці, ' +
+      'та подивіться вкладку Console (F12) — там буде точний текст помилки.'
+    );
+  }
+}, 15000);
+
 const manager = new THREE.LoadingManager();
 manager.onProgress = (url, loaded, total) => {
   const pct = Math.min(100, Math.round((loaded / total) * 100));
@@ -157,11 +188,14 @@ manager.onProgress = (url, loaded, total) => {
 let carRoot = null;
 let modelRadius = 3;
 
-const fbxLoader = new FBXLoader(manager);
-fbxLoader.load(
-  'assets/models/porsche_911_turbo.fbx',
-  (object) => {
-    carRoot = object;
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+const gltfLoader = new GLTFLoader(manager);
+gltfLoader.setDRACOLoader(dracoLoader);
+gltfLoader.load(
+  'assets/models/porsche_911_turbo.glb',
+  (gltf) => {
+    carRoot = gltf.scene;
 
     // Normalize materials + shadows, log names for easy fine-tuning
     const seen = new Set();
@@ -208,13 +242,18 @@ fbxLoader.load(
   },
   undefined,
   (err) => {
-    console.error('Failed to load FBX model:', err);
-    loaderPct.textContent = '⚠';
-    document.querySelector('.loader__label').textContent = 'Не вдалося завантажити модель — перевірте консоль';
+    clearTimeout(stallTimer);
+    console.error('Failed to load GLB model:', err);
+    showLoaderTrouble(
+      'Не вдалося завантажити 3D-модель.<br><br>' +
+      'Переконайтесь, що папка <code>assets/models/porsche_911_turbo.glb</code> завантажена разом із рештою сайту, ' +
+      'і що сторінка відкрита не подвійним кліком по файлу, а через сервер/хостинг.'
+    );
   }
 );
 
 function finishLoading() {
+  clearTimeout(stallTimer);
   loaderEl.classList.add('is-hidden');
   ScrollTrigger.refresh();
 }
